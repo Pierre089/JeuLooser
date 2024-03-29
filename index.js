@@ -3,7 +3,7 @@ function LancerJeu() {
   function initialiserParametresJeu() {
     
     // Initialiser les paramètres du jeu
-  
+    
     magasinAsteroides = [];
     magasinMissiles = [];
     indiceAsteroide = -1;
@@ -63,8 +63,13 @@ function LancerJeu() {
     return Math.sqrt(X * X + Y * Y );
   }
 
-  function animerEspace() {
-
+  function animerEspace(dureeAnimation) {
+    const deltaDuree = dureeAnimation - derniereDureeAnimation;
+    // Créer un astéroïde toutes les 1000 ms
+    if (deltaDuree > 1000) {
+      creerUnAsteroide();
+      derniereDureeAnimation = dureeAnimation;
+    }
     context.beginPath();
     dessinerElementsJeu();
     for (let i = 0; i < magasinAsteroides.length; i++) {
@@ -132,19 +137,20 @@ function LancerJeu() {
         }
       }
     } //for (var noMissileTire 
-
+    
     if (!gameOver) {
       idAnimationEspace = requestAnimationFrame(animerEspace);
     } else {
       cancelAnimationFrame(idAnimationEspace);
       dessinerExplosionVaisseau(vaisseauPosX, vaisseauPosY + 80);
       setTimeout(function () {
-        $(divChute).hide();
-        $(divLooser).hide();
+
+      $(divChute).hide();
+      $(divLooser).hide();
 
         $('#gameOver').show();
         $('#tableauScore').html('Vaisseau détruit par les asteroïdes ! Total asteroïdes détruits : ' + nombreAsteroidesTouches + ' : Appuyer sur la touche entrée pour recommencer le jeu');
-      }, 1300);
+      }, 5000);
     }
   }
 
@@ -166,7 +172,7 @@ function LancerJeu() {
         }
       }
 
-    // Chaque 800 ms les éléments (vaisseau et astéroïdes) sont redessinés avec leur nouvelle position)
+    // Chaque 1000 ms les éléments (vaisseau et astéroïdes) sont redessinés avec leur nouvelle position)
     var vaisseauSpatial = new Image();
     var asteroides = new Image();
     var bananes = new Image();
@@ -333,15 +339,18 @@ function LancerJeu() {
 
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-
+/*
   // Déclencher un timer pour animer le jeu en créant un astéroïde chaque 800 ms
   idDelai = setInterval (function () {
     creerUnAsteroide();
   }, 800);
+*/
+  let derniereDureeAnimation = 0;
 
-  animerEspace();
+  animerEspace(derniereDureeAnimation);
 }
 
 $(document).ready(function () {
+
   LancerJeu();
 });
