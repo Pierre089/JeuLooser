@@ -3,7 +3,6 @@ function LancerJeu() {
   function initialiserParametresJeu() {
     
     // Initialiser les paramètres du jeu
-    
     magasinAsteroides = [];
     magasinMissiles = [];
     indiceAsteroide = -1;
@@ -26,13 +25,16 @@ function LancerJeu() {
     $(divLooser).hide();
 
     imgChute = $(divChute).find('#imgChute');
+
+  }
+
+  function RedemarrerJeu() {
+    initialiserParametresJeu();
+    requestAnimationFrame(animerEspace);
   }
 
   function afficherJeuDemarre() {
-    // Le message "jeu démarré" est affiché au premier missile tiré
-    if (nombreMissilesTotal === 1) {
-      $('#tableauScore').html('Jeu démarré ! Protéger le vaisseau !');
-    }
+    $('#tableauScore').html('Jeu démarré ! Protéger le vaisseau !');
   }
 
   function tirerMissile() {
@@ -49,10 +51,14 @@ function LancerJeu() {
     nombreMissilesTotal += 1
     magasinMissiles[j] = obtenirUnMissile(180, vaisseauPosY + 30);
     
-    $(divChute).hide();
-    $(divLooser).hide();
-
-    afficherJeuDemarre();
+   if (gameOver) {
+      // Le jeu redémarre au premier missile tiré
+      RedemarrerJeu()
+    }
+        // Le message "jeu démarré" est affiché au premier missile tiré
+    if (nombreMissilesTotal === 1) {
+      afficherJeuDemarre();
+    }
   }
   
   // Retourne la distance entre 2 points (la position du missile et la position d'un astéroïde)
@@ -93,6 +99,8 @@ function LancerJeu() {
           if (obtenirDistance(vaisseauPosX, vaisseauPosY, magasinAsteroides[noAsteroide].x, magasinAsteroides[noAsteroide].y) < 50) {
             // Vaisseau spatial détruit par un astéroïde
 
+            dessinerExplosionVaisseau(vaisseauPosX, vaisseauPosY + 80);
+
             gameOver = true;
 
             break;
@@ -108,6 +116,8 @@ function LancerJeu() {
 
                 $(divLooser).show();
                 $(divLooser).addClass("tourner");
+
+                gameOver = true;
               }
 
               //  Retirer l'astéroïde touché du magasin des astéroïdes (ensemble des astéroïdes)
@@ -121,7 +131,7 @@ function LancerJeu() {
               
               // interpolation d'un chaîne de caractères
               $('#tableauScore').html(`${nombreAsteroidesTouches} asteroïde${lettreS} détruit${lettreS}`);
-  
+              
               //break;
             }
           }
@@ -142,16 +152,31 @@ function LancerJeu() {
       idAnimationEspace = requestAnimationFrame(animerEspace);
     } else {
       cancelAnimationFrame(idAnimationEspace);
-      dessinerExplosionVaisseau(vaisseauPosX, vaisseauPosY + 80);
-      setTimeout(function () {
+      delai = 5000;
+      //new Promise (resolve => setTimeout(() => resolve(1), 3000)) // 1
+      if ($(divChute).hasClass("chute")) {
 
-      $(divChute).hide();
-      $(divLooser).hide();
+        $(divChute).one('animationend', () => 
+          idDelai = setTimeout(function () {
 
-        $('#gameOver').show();
-        $('#tableauScore').html('Vaisseau détruit par les asteroïdes ! Total asteroïdes détruits : ' + nombreAsteroidesTouches + ' : Appuyer sur la touche entrée pour recommencer le jeu');
-      }, 5000);
-    }
+            $(divChute).hide();
+            $(divLooser).hide();
+            if (gameOver) {
+              $('#gameOver').show();
+              $('#tableauScore').html('Vaisseau détruit par les asteroïdes ! Total asteroïdes détruits : ' + nombreAsteroidesTouches + ' : Appuyer sur la touche entrée pour recommencer le jeu');
+            }
+          }, delai)
+        )
+      } else {
+        idDelai = setTimeout(function () {
+
+          if (gameOver) {
+            $('#gameOver').show();
+            $('#tableauScore').html('Vaisseau détruit par les asteroïdes ! Total asteroïdes détruits : ' + nombreAsteroidesTouches + ' : Appuyer sur la touche entrée pour recommencer le jeu');
+          }
+        }, delai)
+      }
+   }
   }
 
   function dessinerElementsJeu() {
@@ -275,7 +300,7 @@ function LancerJeu() {
   // ###############################
 
   // Cacher le texte "Jeu terminé"
-  $('#gameOver').hide();
+ // $('#gameOver').hide();
 
   // Lire le canvas de l'espace traversé par le vaisseau spatial (l'élément HTML conteneur servant à dessiner des objets)
   var canvas = document.getElementById('canvasEspace');
@@ -329,11 +354,10 @@ function LancerJeu() {
 
       // Recommencer le jeu
       case 'NumpadEnter':
-      if (gameOver) {
-        initialiserParametresJeu();
-        requestAnimationFrame(animerEspace);
-      }
-      break;
+        if (gameOver) {
+          RedemarrerJeu()
+        }
+        break;
     };
   };
 
