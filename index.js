@@ -1,6 +1,40 @@
 function LancerJeu() {
 
-  function initialiserParametresJeu() {
+    // retourne un objet avec une promise qui déclenche un timer avec un message qui décrit l'événement d'origine et une méthode qui l'annule
+    class attenteDelai {
+
+      #idDelai;
+      #promiseAttente;
+  
+      constructor (delai, evenement) {
+        this.delai = delai;
+        this.evenement = evenement;
+        this.#promiseAttente = new Promise(resolve =>
+          this.#idDelai = setTimeout(() => resolve(this.evenement), this.delai)
+        )
+    }
+  
+      get delai() {
+        return this._delai;
+      } 
+      set delai(delai) {
+        this._delai = delai;
+      } 
+      get evenement() {
+        return this._evenement;
+      }
+      set evenement(evt) {
+        this._evenement = evt;
+      }
+      get attendre() {
+        return this.#promiseAttente;
+      }
+  
+      annuler() {clearTimeout(this.#idDelai)};
+  
+    }
+
+    function initialiserParametresJeu() {
     
     // Initialiser les paramètres du jeu
     magasinAsteroides = [];
@@ -26,6 +60,11 @@ function LancerJeu() {
 
     imgChute = $(divChute).find('#imgChute');
 
+    if (typeof oattenteDelaiFin !== 'undefined') {
+      
+      // Annuler l'attente pour afficher "jeu terminé"
+      oattenteDelaiFin.annuler();
+    }
   }
 
   function RedemarrerJeu() {
@@ -38,11 +77,13 @@ function LancerJeu() {
   }
 
   function tirerMissile() {
+
     // Enregister le missile tiré pour suivre sa position.
     // Périodiquement à chaque cycle d'animation, les missiles et astéroïdes ont une nouvelle position et l'objectif est vérifié (est-ce que la cible visée est atteinte ?)
     // Lire le premier index du tableau avec un missile non défini (c'est à dire qui est sorti du jeu, soit parce qu'il a détruit un astéroïde, soit parce qu'il est sorti du canvas)
     // Ceci évite d'ajouter un élement (un missile) à chaque fois dans le tableau et utiliser plutôt un élément qui est déjà sorti du jeu
     // Arrow function avec prédicat pour lire le premier index du tableau avec un missile non défini
+    
     let j = magasinMissiles.findIndex(i => i === undefined);
     if (j === -1) {
       // pas d'élément non défini trouvé : le missile est ajouté dans le tableau qui s'incrémente d'un élément
@@ -51,15 +92,16 @@ function LancerJeu() {
     nombreMissilesTotal += 1
     magasinMissiles[j] = obtenirUnMissile(180, vaisseauPosY + 30);
     
-   if (gameOver) {
-      // Le jeu redémarre au premier missile tiré
+    // Le jeu redémarre au premier missile tiré
+    if (gameOver) {
       RedemarrerJeu()
     }
-        // Le message "jeu démarré" est affiché au premier missile tiré
+    
     if (nombreMissilesTotal === 1) {
+      // Le message "jeu démarré" est affiché au premier missile tiré
       afficherJeuDemarre();
     }
-  }
+  } // tirerMissile
   
   // Retourne la distance entre 2 points (la position du missile et la position d'un astéroïde)
   // Théorème de Pythagore
@@ -70,12 +112,17 @@ function LancerJeu() {
   }
 
   function animerEspace(dureeAnimation) {
+  
     const deltaDuree = dureeAnimation - derniereDureeAnimation;
+    let promiseFin;
+    delai = 5000;
+
     // Créer un astéroïde toutes les 1000 ms
     if (deltaDuree > 1000) {
       creerUnAsteroide();
       derniereDureeAnimation = dureeAnimation;
     }
+
     context.beginPath();
     dessinerElementsJeu();
     for (let i = 0; i < magasinAsteroides.length; i++) {
@@ -90,34 +137,44 @@ function LancerJeu() {
       }
     }
 
-    // Parcourir les missiles tirés
-    for (let noMissileTire = 0; (noMissileTire < magasinMissiles.length); noMissileTire++) {
-      dessinerMissiles();
-      // Parcourir les astéroïdes pour chaque missile tiré
-      for (let noAsteroide = 0; noAsteroide < magasinAsteroides.length; noAsteroide++) {
-        if (magasinAsteroides[noAsteroide] !== undefined) {
-          if (obtenirDistance(vaisseauPosX, vaisseauPosY, magasinAsteroides[noAsteroide].x, magasinAsteroides[noAsteroide].y) < 50) {
-            // Vaisseau spatial détruit par un astéroïde
+    // Parcourir les astéroïdes pour chaque missile tiré
+    for (let noAsteroide = 0; noAsteroide < magasinAsteroides.length; noAsteroide++) {
 
-            dessinerExplosionVaisseau(vaisseauPosX, vaisseauPosY + 80);
+      if (magasinAsteroides[noAsteroide] !== undefined) {
 
-            gameOver = true;
+        if (obtenirDistance(vaisseauPosX, vaisseauPosY, magasinAsteroides[noAsteroide].x, magasinAsteroides[noAsteroide].y) < 50) {
+            
+          //-- Vaisseau spatial détruit par un astéroïde
+          //--------------------------------------------
 
-            break;
-          } 
+          dessinerExplosionVaisseau(vaisseauPosX, vaisseauPosY + 80);
 
+          oattenteDelaiFin = new attenteDelai(delai, "explosion"); 
+          gameOver = true;
+
+          break;
+        } 
+
+        // Parcourir les missiles tirés
+        for (let noMissileTire = 0; (noMissileTire < magasinMissiles.length); noMissileTire++) {
+          dessinerMissiles();
           if (magasinMissiles[noMissileTire] !== undefined) {
             if (obtenirDistance(magasinMissiles[noMissileTire].x, magasinMissiles[noMissileTire].y, magasinAsteroides[noAsteroide].x, magasinAsteroides[noAsteroide].y) < 50) {
   
-              // Gérer la destruction d'un astéroïde
+              //-- Gérer la destruction d'un astéroïde
+              //--------------------------------------
+
               if (magasinAsteroides[noAsteroide].type === 'coeur') {
                 $(divChute).addClass("chute");
                 $(divChute).show();
 
                 $(divLooser).show();
                 $(divLooser).addClass("tourner");
-
-                gameOver = true;
+                
+               $(divChute).one('animationend', () => {
+                  oattenteDelaiFin = new attenteDelai(delai, "chute");
+                  gameOver = true;
+                });
               }
 
               //  Retirer l'astéroïde touché du magasin des astéroïdes (ensemble des astéroïdes)
@@ -135,48 +192,31 @@ function LancerJeu() {
               //break;
             }
           }
-        }
-      }
-
-      if (magasinMissiles[noMissileTire] !== undefined) {
-        magasinMissiles[noMissileTire].x += magasinMissiles[noMissileTire].vitesse;
-        if (magasinMissiles[noMissileTire].x > canvas.width) {
-
-          // missile qui disparaît du canvas sans toucher sa cible
-          magasinMissiles.splice(noMissileTire, 1);
-        }
-      }
-    } //for (var noMissileTire 
+          if (magasinMissiles[noMissileTire] !== undefined) {
+            magasinMissiles[noMissileTire].x += magasinMissiles[noMissileTire].vitesse;
+            if (magasinMissiles[noMissileTire].x > canvas.width) {
     
+              // missile qui disparaît du canvas sans toucher sa cible
+              magasinMissiles.splice(noMissileTire, 1);
+            }
+          }
+        } //for (var noMissileTire
+      } // if (magasinAsteroides[noAsteroide] !== undefined)
+    } //for (var noAsteroide
+
     if (!gameOver) {
       idAnimationEspace = requestAnimationFrame(animerEspace);
     } else {
       cancelAnimationFrame(idAnimationEspace);
-      delai = 5000;
-      //new Promise (resolve => setTimeout(() => resolve(1), 3000)) // 1
-      if ($(divChute).hasClass("chute")) {
 
-        $(divChute).one('animationend', () => 
-          idDelai = setTimeout(function () {
-
-            $(divChute).hide();
-            $(divLooser).hide();
-            if (gameOver) {
-              $('#gameOver').show();
-              $('#tableauScore').html('Vaisseau détruit par les asteroïdes ! Total asteroïdes détruits : ' + nombreAsteroidesTouches + ' : Appuyer sur la touche entrée pour recommencer le jeu');
-            }
-          }, delai)
-        )
-      } else {
-        idDelai = setTimeout(function () {
-
-          if (gameOver) {
-            $('#gameOver').show();
-            $('#tableauScore').html('Vaisseau détruit par les asteroïdes ! Total asteroïdes détruits : ' + nombreAsteroidesTouches + ' : Appuyer sur la touche entrée pour recommencer le jeu');
-          }
-        }, delai)
-      }
-   }
+      oattenteDelaiFin.attendre.then ((evenement) => {
+        $(divChute).hide();
+        $(divLooser).hide();
+        $('#gameOver').show();
+        let message = evenement == 'explosion' ? "Vaisseau détruit par les asteroïdes" : "Terre détruite par le vaisseau"
+        $('#tableauScore').html(`${message} ! Total asteroïdes détruits : ${nombreAsteroidesTouches} : Appuyer sur la touche entrée pour recommencer le jeu.`);
+      });
+    }
   }
 
   function dessinerElementsJeu() {
@@ -234,7 +274,6 @@ function LancerJeu() {
 
   function dessinerExplosionVaisseau (x, y) {
     var explosion = new Image();
-    //explosion.src = '../img/explosion.png';
     explosion.src = 'explosion.png';
     explosion.onload = function () {
       context.drawImage(explosion, x, y, 200, 200);
@@ -247,7 +286,7 @@ function LancerJeu() {
       'rayon': 8,
       'x': x,
       'y': y,
-      'vitesse': 20
+      'vitesse': 13
     };
   }
 
@@ -354,8 +393,8 @@ function LancerJeu() {
 
       // Recommencer le jeu
       case 'NumpadEnter':
+        RedemarrerJeu();
         if (gameOver) {
-          RedemarrerJeu()
         }
         break;
     };
@@ -363,16 +402,11 @@ function LancerJeu() {
 
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-/*
-  // Déclencher un timer pour animer le jeu en créant un astéroïde chaque 800 ms
-  idDelai = setInterval (function () {
-    creerUnAsteroide();
-  }, 800);
-*/
+
   let derniereDureeAnimation = 0;
 
   animerEspace(derniereDureeAnimation);
-}
+} // LancerJeu
 
 $(document).ready(function () {
 
